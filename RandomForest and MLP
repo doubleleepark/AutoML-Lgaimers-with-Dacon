@@ -1,0 +1,41 @@
+# 
+import numpy as np
+import pandas as pd
+
+%matplotlib inline
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+train = pd.read_csv('/content/train.csv')
+test = pd.read_csv('/content/test.csv')
+
+train.shape
+train.head()
+
+#
+num_list = list(['X_29', 'X_30', 'X_31', 'X_32', 'X_33', 'X_34', 'X_35',
+       'X_36', 'X_37', 'X_38', 'X_39', 'X_40', 'X_41', 'X_42', 'X_43', 'X_44',
+       'X_45', 'X_46', 'X_47', 'X_48', 'X_49', 'X_50'])
+
+#
+fig = plt.figure(figsize=(10,30))
+
+for i in range(len(num_list)):
+  plt.subplot(15,2,i+1)
+  plt.title(num_list[i])
+  plt.hist(train[num_list[i]],color='blue',alpha=0.5,bins=20,edgecolor='black')
+
+plt.tight_layout()
+
+#
+for i in range(len(num_list)):
+  plt.figure(figsize=(30,5))
+  plt.title(num_list[i])
+  plt.plot(train[num_list[i]],color='blue',alpha=0.5)
+
+#plt.show()
+plt.tight_layout()
+
+#
+plt.figure(figsize=(50,30))
+sns.heatmap(cor, cmap='plasma')
