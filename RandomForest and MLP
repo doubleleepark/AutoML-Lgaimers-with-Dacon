@@ -1,6 +1,25 @@
 # 
-import numpy as np
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+import cufflinks as cf
+import re
+import pickle
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.decomposition import PCA
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.metrics import *
 
 %matplotlib inline
 import seaborn as sns
@@ -12,14 +31,13 @@ test = pd.read_csv('/content/test.csv')
 train.shape
 train.head()
 
-#
+# Visulatize a part of data -> repeat
 num_list = list(['X_29', 'X_30', 'X_31', 'X_32', 'X_33', 'X_34', 'X_35',
        'X_36', 'X_37', 'X_38', 'X_39', 'X_40', 'X_41', 'X_42', 'X_43', 'X_44',
        'X_45', 'X_46', 'X_47', 'X_48', 'X_49', 'X_50'])
 
-#
 fig = plt.figure(figsize=(10,30))
-
+# histogram
 for i in range(len(num_list)):
   plt.subplot(15,2,i+1)
   plt.title(num_list[i])
@@ -27,7 +45,7 @@ for i in range(len(num_list)):
 
 plt.tight_layout()
 
-#
+# plot
 for i in range(len(num_list)):
   plt.figure(figsize=(30,5))
   plt.title(num_list[i])
@@ -36,6 +54,275 @@ for i in range(len(num_list)):
 #plt.show()
 plt.tight_layout()
 
-#
+# corralation
 plt.figure(figsize=(50,30))
 sns.heatmap(cor, cmap='plasma')
+
+
+def col_minimize(df):       # 상관성이 높은 feature들을 평균값으로 묶는 함수 정의
+  #ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ X_14 ~ X_18 : 안테나 패드 위치
+  count = 0
+  sum = 0
+  for i in range(0, 5, 1):
+    count = count + 1
+    sum = sum + df[f'X_{i+14}']
+
+  for i in range(1, 5, 1):
+   df = df.drop(columns=[f'X_{i+14}'], axis=1)
+
+  sum = sum/count
+  df['X_14'] = sum
+  df = df.rename(columns={'X_14':'X_14~18'})
+
+  #ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ X_19 ~ X_22 : 스크류 삽입 깊이
+  count = 0
+  sum=0
+  for i in range(0, 4, 1):
+    count = count + 1
+    sum = sum + df[f'X_{i+19}']
+
+  for i in range(1, 4, 1):
+   df = df.drop(columns=[f'X_{i+19}'], axis=1)
+
+  sum = sum/count
+  df['X_19'] = sum
+  df = df.rename(columns={'X_19':'X_19~22'})
+
+  #ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ X_24 ~ X_29 : 커넥터 핀 치수
+  count = 0
+  sum=0
+  for i in range(0, 6, 1):
+    count = count + 1
+    sum = sum + df[f'X_{i+24}']
+
+  for i in range(1, 6, 1):
+    df = df.drop(columns=[f'X_{i+24}'], axis=1)
+
+  sum = sum/count
+  df['X_24'] = sum
+  df = df.rename(columns={'X_24':'X_24~29'})
+
+  #ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ X_38 ~ X_40 : 하우징 PCB 안착부 치수
+  count = 0
+  sum=0
+  for i in range(0, 3, 1):
+    count = count + 1
+    sum = sum + df[f'X_{i+38}']
+
+  for i in range(1, 3, 1):
+    df = df.drop(columns=[f'X_{i+38}'], axis=1)
+
+  sum = sum/count
+  df['X_38'] = sum
+  df = df.rename(columns={'X_38':'X_38~40'})
+
+
+  #ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ X_50 ~ X_56 : SMT 납 량
+  count = 0
+  sum=0
+  for i in range(0, 7, 1):
+    count = count + 1
+    sum = sum + df[f'X_{i+50}']
+
+  for i in range(1, 7, 1):
+    df = df.drop(columns=[f'X_{i+50}'], axis=1)
+
+  sum = sum/count
+  df['X_50'] = sum
+  df = df.rename(columns={'X_50':'X_50~56'})
+
+  return df
+
+train = col_minimize(train)   # 상관성 높은 feature들 묶음
+test = col_minimize(test)
+
+ # 훈련에 필요 없는 feature들 삭제
+drop_feat= ['X_04','X_10','X_11','X_23','X_47','X_48']
+train.drop(columns=drop_feat,inplace=True)
+test.drop(columns=drop_feat,inplace=True)
+test.drop(columns='ID',inplace=True)
+
+target_name = []                        # train에서 target열들 삭제
+for f in range(1,15):
+  if f<10:
+    target_name.append(f'Y_0{f}')
+  else:
+    target_name.append(f'Y_{f}')
+
+train_no_target = train.drop(columns=target_name,axis=1)
+
+# 이상치 필터링 함수 정의 ### https://blog.naver.com/passiona2z/222616239901
+#index가 아닌 values값을 얻기위해 index말고 list형태로 저장도 가능
+def get_outlier2(df, column, weight=2):
+
+    fraud = df[column]            
+    quantile_25 = np.percentile(fraud.values, 25) # np.percentile
+    quantile_75 = np.percentile(fraud.values, 75)
+    
+    # IQR을 구하고, IQR에 1.5를 곱하여 최대값과 최소값 지점 계산 
+    iqr = quantile_75 - quantile_25
+    iqr_weight = iqr * weight
+    lowest_val = quantile_25 - iqr_weight
+    highest_val = quantile_75 + iqr_weight
+    
+    # 이상치 index 반환
+    # 최댓값보다 크거나, 최솟값보다 작은 값을 이상치 데이터로 설정하고 Dataframe index 반환
+    outlier_index = fraud[(fraud < lowest_val) | (fraud > highest_val)]
+
+    return outlier_index
+    
+#highest_val을 반환
+def get_outlier3(df, column, weight=2):
+
+    fraud = df[column]            
+    quantile_25 = np.percentile(fraud.values, 25) # np.percentile
+    quantile_75 = np.percentile(fraud.values, 75)
+    
+    # IQR을 구하고, IQR에 1.5를 곱하여 최대값과 최소값 지점 계산 
+    iqr = quantile_75 - quantile_25
+    iqr_weight = iqr * weight
+    lowest_val = quantile_25 - iqr_weight
+    highest_val = quantile_75 + iqr_weight
+    
+    # 이상치 index 반환
+    # 최댓값보다 크거나, 최솟값보다 작은 값을 이상치 데이터로 설정하고 Dataframe index 반환
+    outlier_index = fraud[(fraud < lowest_val) | (fraud > highest_val)]
+    
+
+    return highest_val
+#lowest_val을 반환
+def get_outlier4(df, column, weight=2):
+
+    fraud = df[column]            
+    quantile_25 = np.percentile(fraud.values, 25) # np.percentile
+    quantile_75 = np.percentile(fraud.values, 75)
+    
+    # IQR을 구하고, IQR에 1.5를 곱하여 최대값과 최소값 지점 계산 
+    iqr = quantile_75 - quantile_25
+    iqr_weight = iqr * weight
+    lowest_val = quantile_25 - iqr_weight
+    highest_val = quantile_75 + iqr_weight
+    
+    # 이상치 index 반환
+    # 최댓값보다 크거나, 최솟값보다 작은 값을 이상치 데이터로 설정하고 Dataframe index 반환
+    outlier_index = fraud[(fraud < lowest_val) | (fraud > highest_val)]
+    
+    return lowest_val
+    
+# 이상치 제거 함수 정의
+def delete_outlier(df, outlier_index):
+  df_copy = df.copy()
+  df_copy = df_copy.drop(outlier_index, axis=0) # outlier_index, axis=0
+  
+  return df_copy # 이상치가 제거된 df을 반환
+ 
+ # 이상치를 제거하는 것이 아닌 최대 최소 값으로 변환
+ for f in range(0,len(train_no_target.columns)):
+  out_numbers=[]
+  out_numbers2=[]
+  outlier_index = get_outlier2(df=train_no_target,column=str(f),weight=2)
+  highest_val = get_outlier3(df=train_no_target,column=str(f),weight=2)
+  lowest_val = get_outlier4(df=train_no_target,column=str(f),weight=2)
+  for i in range(0,len(outlier_index.values)):
+    out_numbers.append(outlier_index.values[i])
+  for n in range(0,len(out_numbers)):
+      if out_numbers[n] > highest_val:
+        train_no_target[f'{f}']=train_no_target.iloc[:,f].replace(out_numbers[n], np.round(highest_val,2))
+      else:
+        train_no_target[f'{f}']=train_no_target.iloc[:,f].replace(out_numbers[n], np.round(lowest_val,2))
+ 
+ # skew 조정을 하기전 비교를 위해 df를 생성
+ ske = pd.DataFrame(columns=['X_0','X_1', 'X_2', 'X_3', 'X_4', 'X_5', 'X_6', 'X_7', 'X_8', 'X_9', 'X_10',
+       'X_11', 'X_12', 'X_13', 'X_14', 'X_15', 'X_16', 'X_17', 'X_18', 'X_19',
+       'X_20', 'X_21', 'X_22', 'X_23', 'X_24', 'X_25', 'X_26', 'X_27', 'X_28',
+       'X_29'])
+       
+ # skew 값 조정
+for f in range(0,len(n_train.columns)):
+
+  if n_train[f'X_{f}'].skew() > 0:
+    ske[f'X_{f}'] = np.log(n_train[f'X_{f}'])
+
+  elif n_train[f'X_{f}'].skew() < 0:
+    ske[f'X_{f}'] = np.log(n_train.iloc[:, f] - min(n_train.iloc[:, f]) +1)
+
+  else:
+    ske[f'X_{f}'] = n_train[f'X_{f}'] 
+    
+# skew 조정으로 na 값으로 변환 된 열 재조정
+ske['X_21'] = np.log(n_train.iloc[:, 21]-min(n_train.iloc[:, 21])+1)
+ske['X_26'] = np.log(n_train.iloc[:, 26]-min(n_train.iloc[:, 26])+1)
+n_train = ske
+
+# MinMazScaler
+mms = MinMaxScaler()
+n_train = mms.fit_transform(n_train)
+test = mms.transform(test)
+
+# PCA
+pca = PCA()
+pca.fit(n_train)
+plt.figure()
+plt.plot(np.cumsum(pca.explained_variance_ratio_), marker='.')
+plt.xlabel('Number of Components')
+plt.ylabel('Variance (%)') #for each component
+plt.title('Variance')
+plt.show()
+pca = PCA(n_components=18)
+train_pca=pca.fit_transform(n_train)
+test_pca=pca.transform(test)
+train_pca = pd.DataFrame(train_pca)
+test_pca = pd.DataFrame(test_pca)
+
+for i in range(len(train_pca.columns)):   # 이름 재설정
+  train_pca.rename(columns = {i : f'X_{i}'}, inplace=True)
+  test_pca.rename(columns = {i : f'X_{i}'}, inplace=True)
+
+# 데이터 분리
+x_train,x_test,y_train,y_test = train_test_split(train_pca, train[target_name], test_size=0.2, random_state=101)
+
+# 모델 확인을 위한 데이터 프리임
+Acc = pd.DataFrame(index=None, columns=['model','train_score','test_score'])
+
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import GradientBoostingRegressor,AdaBoostRegressor,BaggingRegressor, RandomForestRegressor
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.svm import SVR
+from sklearn.metrics import r2_score
+
+regressors = [
+              ['DecisionTreeRegressor',MultiOutputRegressor(DecisionTreeRegressor())],
+              ['RandomForestRegressor', MultiOutputRegressor(RandomForestRegressor())],
+              ['MLPRegressor',MultiOutputRegressor(MLPRegressor())]
+              ]
+model = DecisionTreeRegressor()   ## Multioutput 시간 엄청 오래걸림 10분넘게
+model.fit(x_train,y_train)
+actr1 = r2_score(y_test, model.predict(x_test))
+Acc[0] = ['DT',model.score(x_train,y_train),model.score(x_test,y_test)]
+model = RandomForestRegressor()
+model.fit(x_train,y_train)
+actr1 = r2_score(y_test, model.predict(x_test)) 
+Acc[1] = ['RF',model.score(x_train,y_train),model.score(x_test,y_test)]
+
+model = MLPRegressor()
+model.fit(x_train,y_train)
+actr1 = r2_score(y_test, model.predict(x_test))
+Acc[2] = ['MLP',model.score(x_train,y_train),model.score(x_test,y_test)]
+
+# GridSearch() -> 정확도가 가장 좋은 Random만 우선 진행
+params = {
+‘n_estimators : [50, 100, 200, 300],
+‘max_depth’ : [4, 12, 24, 30] 
+‘max_leaf_nodes’ : [4, 6, 8] 
+‘min_samples_split’ : [2, 4, 6]
+‘min_samples_leaf’ : [1, 2, 4, 6] }
+model = RandomForestRegressor(random_state=0)
+grid = GridSearchCV(model,params=params,cv=5,n_jobs=-1)
+grid.fit(x_train,y_train)
+Acc[3] = ['Grid_RF',model.score(x_train,y_train),model.score(x_test,y_test)]
+
+#모델 비교
+Acc
+
+
