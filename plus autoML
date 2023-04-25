@@ -1,0 +1,38 @@
+# 앞의 파일에서 전처리 과정을 거친 후 AUTO_ML을 사용하여 성능을 비교
+
+!pip install auto-sklearn
+
+# 라이브러리 불러오기
+
+import numpy as numpy
+from pprint import pprint
+
+from sklearn.datasets import make_regression
+from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
+
+from autosklearn.regression import AutoSklearnRegressor
+
+train_input, test_input, train_target, test_target = train_test_split(n_train,train[target_name],test_size=0.2)
+
+auto.fit(train_input,train_target)
+
+# 추가로 cross_validation 진행
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_validate
+
+splitter = KFold(n_splits=10, shuffle=True)
+scores = cross_validate(auto,test[:39607],n_train[target_name],cv=splitter)
+
+auto = AutoSklearnRegressor(time_left_for_this_task = 3600, per_run_time_limit = 40, n_jobs = -1)
+print(auto.sprint_statistics())
+print(auto.show_models()) # -> extra_tree가 r2스코어가 0.934485로 가장 좋았다.
+print(auto.leaderboard())
+
+preds2 = auto.predict(test)
+preds3 = pd.DataFrame(preds2)
+lg_nrmse(train[target_name],preds3[:39607]) # -> 1.95 정도로 좋은 결과를 얻을 수 있었다.
+
+
+
+
